@@ -162,7 +162,7 @@
     .btn-outline:hover { background: var(--surface2); }
 
     /* ── metrics row ── */
-    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 1.5rem; }
 
     .metric-card {
       background: var(--surface);
@@ -343,10 +343,39 @@
       margin-bottom: 10px;
     }
 
+    /* ── unread toggle ── */
+    .toggle-wrap {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 13px; color: var(--text-2);
+      cursor: pointer; user-select: none; white-space: nowrap;
+    }
+    .toggle {
+      width: 32px; height: 18px; border-radius: 99px;
+      background: var(--border-md);
+      position: relative; transition: background 0.2s; flex-shrink: 0;
+      cursor: pointer; border: none; padding: 0;
+    }
+    .toggle::after {
+      content: ''; position: absolute;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #fff; top: 3px; left: 3px;
+      transition: transform 0.2s;
+    }
+    .toggle.on { background: var(--blue); }
+    .toggle.on::after { transform: translateX(14px); }
+
+    /* ── needs-reply badge ── */
+    .reply-badge {
+      font-size: 10px; font-weight: 600; padding: 1px 6px;
+      border-radius: 99px; background: var(--amber-light);
+      color: var(--amber); white-space: nowrap; flex-shrink: 0;
+    }
+
     @media (max-width: 700px) {
       .metrics { grid-template-columns: repeat(2, 1fr); }
       .cat-grid { grid-template-columns: 1fr; }
       main { padding: 1rem; }
+      .toggle-wrap span { display: none; }
     }
   </style>
 </head>
@@ -415,6 +444,11 @@
         <div class="metric-sub">dome threads</div>
       </div>
       <div class="metric-card">
+        <div class="metric-label">Needs reply</div>
+        <div class="metric-value" id="m-needs-reply">—</div>
+        <div class="metric-sub">awaiting your response</div>
+      </div>
+      <div class="metric-card">
         <div class="metric-label">Last synced</div>
         <div class="metric-value" id="m-synced" style="font-size:14px; padding-top:6px;">—</div>
         <div class="metric-sub">&nbsp;</div>
@@ -436,6 +470,10 @@
         <option value="Vimetco Dajcor aluminum extrusion channel">Aluminum extrusion</option>
       </select>
       <button class="btn-primary" onclick="runSearch()">Search</button>
+      <label class="toggle-wrap" title="Show unread only">
+        <button class="toggle" id="unread-toggle" onclick="toggleUnread()" aria-pressed="false" aria-label="Unread only"></button>
+        Unread only
+      </label>
     </div>
 
     <!-- search results -->
@@ -450,6 +488,17 @@
     <!-- category grid -->
     <div class="section-label">project categories</div>
     <div class="cat-grid">
+      <div class="cat-card">
+        <div class="cat-head">
+          <div class="cat-name">
+            <div class="cat-dot" style="background:#854F0B;"></div>
+            Needs reply
+          </div>
+          <button class="btn-outline" style="font-size:11px; padding:3px 10px;" onclick="loadNeedsReply()">Load</button>
+        </div>
+        <div class="cat-body" id="cat-needs-reply"><div class="state-msg">Threads where someone is waiting on you</div></div>
+      </div>
+
       <div class="cat-card">
         <div class="cat-head">
           <div class="cat-name">
@@ -548,6 +597,15 @@
 const SCOPES = "https://www.googleapis.com/auth/gmail.readonly";
 let CLIENT_ID = localStorage.getItem("gd_client_id") || "";
 let accessToken = null;
+let unreadOnly = false;
+
+function toggleUnread() {
+  unreadOnly = !unreadOnly;
+  const btn = document.getElementById("unread-toggle");
+  btn.classList.toggle("on", unreadOnly);
+  btn.setAttribute("aria-pressed", unreadOnly);
+  toast(unreadOnly ? "Showing unread only" : "Showing all threads");
+}
 
 function openConfig() {
   document.getElementById("client-id-input").value = CLIENT_ID;
@@ -626,16 +684,21 @@ async function searchThreads(query, maxResults = 6) {
     gapi(`https://www.googleapis.com/gmail/v1/users/me/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`)
   ));
   return details.map(t => {
-    const msg = t.messages?.[0];
-    const hdrs = msg?.payload?.labelIds || [];
-    const headers = msg?.payload?.headers || [];
-    const get = name => (headers.find(h => h.name === name) || {}).value || "";
-    const unread = (msg?.labelIds || []).includes("UNREAD");
-    const from = get("From").replace(/<.*?>/, "").trim();
-    const date = get("Date");
-    const d = date ? new Date(date) : null;
+    const msgs = t.messages || [];
+    const firstMsg = msgs[0];
+    const lastMsg  = msgs[msgs.length - 1];
+    const getHdr = (msg, name) => ((msg?.payload?.headers || []).find(h => h.name === name) || {}).value || "";
+    const unread  = (firstMsg?.labelIds || []).includes("UNREAD") ||
+                    msgs.some(m => (m.labelIds || []).includes("UNREAD"));
+    const from    = getHdr(firstMsg, "From").replace(/<.*?>/, "").trim();
+    const subject = getHdr(firstMsg, "Subject");
+    const date    = getHdr(lastMsg,  "Date");
+    const d       = date ? new Date(date) : null;
     const dateStr = d ? d.toLocaleDateString("en-US", { month:"short", day:"numeric" }) : "";
-    return { from, subject: get("Subject"), date: dateStr, unread, id: t.id };
+    const lastFrom = getHdr(lastMsg, "From");
+    const myEmail  = document.getElementById("user-name").textContent || "";
+    const needsReply = myEmail && lastFrom.includes(myEmail.split("@")[0]);
+    return { from, subject, date: dateStr, unread, id: t.id, needsReply };
   });
 }
 
@@ -654,6 +717,13 @@ async function loadMetrics() {
     const projData = await gapi("https://www.googleapis.com/gmail/v1/users/me/threads?q=york dome OR Ballerz OR Monolithic OR Sartell&maxResults=1");
     document.getElementById("m-projects").textContent = projData.resultSizeEstimate ?? "—";
   } catch(e) {}
+  try {
+    const myEmail = document.getElementById("user-name").textContent || "";
+    if (myEmail) {
+      const replyData = await gapi(`https://www.googleapis.com/gmail/v1/users/me/threads?q=from:me is:unread&maxResults=1`);
+      document.getElementById("m-needs-reply").textContent = replyData.resultSizeEstimate ?? "—";
+    }
+  } catch(e) {}
 }
 
 /* ── category load ── */
@@ -661,14 +731,33 @@ async function loadCat(query, key) {
   const el = document.getElementById("cat-" + key);
   el.innerHTML = '<div class="state-msg"><span class="spinner"></span></div>';
   try {
-    const threads = await searchThreads(query, 5);
+    const q = unreadOnly ? query + " is:unread" : query;
+    const threads = await searchThreads(q, 5);
     renderThreads(threads, "cat-" + key);
   } catch(e) {
     el.innerHTML = '<div class="state-msg">Could not load — check sign-in</div>';
   }
 }
 
+async function loadNeedsReply() {
+  const el = document.getElementById("cat-needs-reply");
+  el.innerHTML = '<div class="state-msg"><span class="spinner"></span></div>';
+  try {
+    const myEmail = document.getElementById("user-name").textContent || "";
+    const query = myEmail
+      ? `from:me newer_than:30d`
+      : `is:sent newer_than:30d`;
+    const threads = await searchThreads(query, 8);
+    const filtered = threads.filter(t => t.needsReply);
+    document.getElementById("m-needs-reply").textContent = filtered.length;
+    renderThreads(filtered, "cat-needs-reply");
+  } catch(e) {
+    el.innerHTML = '<div class="state-msg">Could not load — check sign-in</div>';
+  }
+}
+
 function loadAll() {
+  loadNeedsReply();
   loadCat("york dome USTA Luca Benetti drawings submittal", "york");
   loadCat("Kobond OR Jinda OR SIOEN OR Halead OR Hytex membrane", "supplier");
   loadCat("Monolithic Constructors Mike South QC membrane", "monolithic");
@@ -694,8 +783,9 @@ async function runSearch() {
   label.textContent = `Searching for "${query}"…`;
 
   try {
-    const threads = await searchThreads(query, 10);
-    label.textContent = `${threads.length} thread${threads.length !== 1 ? "s" : ""} for "${query}"`;
+    const q = unreadOnly ? query + " is:unread" : query;
+    const threads = await searchThreads(q, 10);
+    label.textContent = `${threads.length} thread${threads.length !== 1 ? "s" : ""} for "${query}"${unreadOnly ? " (unread)" : ""}`;
     renderThreads(threads, "results-body");
   } catch(e) {
     label.textContent = "Search failed";
@@ -728,6 +818,7 @@ function renderThreads(threads, containerId) {
         <div class="thread-from">${escape(t.from)}</div>
         <div class="thread-subject">${escape(t.subject || "(no subject)")}</div>
       </div>
+      ${t.needsReply ? '<span class="reply-badge">awaiting reply</span>' : ''}
       <div class="thread-date">${t.date}</div>
     </div>
   `).join("");
