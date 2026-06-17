@@ -743,14 +743,10 @@ async function loadNeedsReply() {
   const el = document.getElementById("cat-needs-reply");
   el.innerHTML = '<div class="state-msg"><span class="spinner"></span></div>';
   try {
-    const myEmail = document.getElementById("user-name").textContent || "";
-    const query = myEmail
-      ? `from:me newer_than:30d`
-      : `is:sent newer_than:30d`;
+    const query = `to:me is:unread -from:me -from:noreply -from:no-reply newer_than:60d`;
     const threads = await searchThreads(query, 8);
-    const filtered = threads.filter(t => t.needsReply);
-    document.getElementById("m-needs-reply").textContent = filtered.length;
-    renderThreads(filtered, "cat-needs-reply");
+    document.getElementById("m-needs-reply").textContent = threads.length;
+    renderThreads(threads, "cat-needs-reply");
   } catch(e) {
     el.innerHTML = '<div class="state-msg">Could not load — check sign-in</div>';
   }
