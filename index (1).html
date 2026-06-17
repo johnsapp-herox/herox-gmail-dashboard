@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HeroX Gmail Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── tokens ── */
+    :root {
+      --bg:         #f7f6f3;
+      --surface:    #ffffff;
+      --surface2:   #f1f0ed;
+      --border:     rgba(0,0,0,0.10);
+      --border-md:  rgba(0,0,0,0.18);
+      --text-1:     #1a1a1a;
+      --text-2:     #5a5a5a;
+      --text-3:     #9a9a9a;
+      --blue:       #185FA5;
+      --blue-light: #E6F1FB;
+      --blue-mid:   #378ADD;
+      --amber:      #854F0B;
+      --amber-light:#FAEEDA;
+      --green:      #3B6D11;
+      --green-light:#EAF3DE;
+      --coral:      #993C1D;
+      --coral-light:#FAECE7;
+      --teal:       #0F6E56;
+      --teal-light: #E1F5EE;
+      --radius-sm:  6px;
+      --radius-md:  10px;
+      --radius-lg:  14px;
+      --shadow:     0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── layout ── */
+    .app { display: grid; grid-template-rows: auto 1fr; min-height: 100vh; }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text-1);
+    }
+
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: var(--blue);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .logo-icon svg { width: 16px; height: 16px; fill: #fff; }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+
+    .user-pill {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 4px 12px 4px 6px;
+      font-size: 13px;
+      color: var(--text-2);
+    }
+
+    .avatar {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--blue-light);
+      color: var(--blue);
+      font-size: 10px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    main { padding: 2rem; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+    /* ── auth screen ── */
+    #auth-screen {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: calc(100vh - 56px);
+      text-align: center;
+      gap: 1.5rem;
+    }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 3rem;
+      max-width: 420px;
+      box-shadow: var(--shadow);
+    }
+
+    .auth-card h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+    .auth-card p  { font-size: 14px; color: var(--text-2); margin-bottom: 1.5rem; }
+
+    .btn-google {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius-md);
+      padding: 10px 20px;
+      font-size: 14px; font-weight: 500;
+      color: var(--text-1);
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+      text-decoration: none;
+    }
+    .btn-google:hover { background: var(--surface2); box-shadow: var(--shadow); }
+
+    .btn-primary {
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 9px 18px;
+      font-size: 13px; font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-2);
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius-md);
+      padding: 7px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-outline:hover { background: var(--surface2); }
+
+    /* ── metrics row ── */
+    .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+    }
+
+    .metric-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .metric-value { font-size: 26px; font-weight: 600; color: var(--text-1); }
+    .metric-sub   { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+    /* ── search bar ── */
+    .search-bar {
+      display: flex; gap: 8px; margin-bottom: 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      align-items: center;
+      box-shadow: var(--shadow);
+    }
+
+    .search-bar svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-3); }
+
+    .search-bar input {
+      flex: 1;
+      border: none; outline: none;
+      font-size: 14px; font-family: inherit;
+      background: transparent;
+      color: var(--text-1);
+    }
+
+    .search-bar input::placeholder { color: var(--text-3); }
+
+    .search-bar select {
+      border: none; outline: none;
+      font-size: 13px; font-family: inherit;
+      background: var(--surface2);
+      color: var(--text-2);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+
+    /* ── category grid ── */
+    .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 1.5rem; }
+
+    .cat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .cat-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cat-name {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 500;
+    }
+
+    .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .cat-body { padding: 8px 0; min-height: 120px; }
+
+    /* ── thread items ── */
+    .thread {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 9px 16px;
+      cursor: pointer;
+      transition: background 0.1s;
+      border-bottom: 1px solid var(--border);
+    }
+    .thread:last-child { border-bottom: none; }
+    .thread:hover { background: var(--surface2); }
+
+    .unread-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--blue-mid); margin-top: 5px; flex-shrink: 0; }
+    .read-dot   { width: 7px; height: 7px; border-radius: 50%; background: var(--border-md); margin-top: 5px; flex-shrink: 0; }
+
+    .thread-info { flex: 1; min-width: 0; }
+    .thread-from    { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .thread-subject { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    .thread-date    { font-size: 11px; color: var(--text-3); flex-shrink: 0; padding-top: 1px; }
+
+    .state-msg { padding: 2rem 1rem; text-align: center; color: var(--text-3); font-size: 13px; }
+
+    /* ── results section ── */
+    .results-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+
+    .results-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .results-title { font-size: 13px; font-weight: 500; color: var(--text-2); }
+
+    /* ── badge ── */
+    .badge {
+      display: inline-block; font-size: 11px; font-weight: 500;
+      padding: 2px 8px; border-radius: 99px;
+    }
+
+    /* ── config modal ── */
+    .modal-bg {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .modal-bg.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      width: 480px;
+      max-width: 95vw;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    }
+
+    .modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .modal p  { font-size: 13px; color: var(--text-2); margin-bottom: 1.25rem; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 5px; }
+    .form-group input {
+      width: 100%; padding: 8px 10px;
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius-sm);
+      font-size: 13px; font-family: inherit;
+      color: var(--text-1); background: var(--surface);
+      outline: none;
+    }
+    .form-group input:focus { border-color: var(--blue-mid); }
+    .form-group .hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.5rem; }
+
+    /* ── toast ── */
+    #toast {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      background: #1a1a1a; color: #fff;
+      padding: 10px 20px; border-radius: var(--radius-md);
+      font-size: 13px; opacity: 0; transition: opacity 0.2s;
+      pointer-events: none; z-index: 200; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── spinner ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--border-md);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+
+    /* ── section label ── */
+    .section-label {
+      font-size: 11px; font-weight: 500; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.07em;
+      margin-bottom: 10px;
+    }
+
+    /* ── unread toggle ── */
+    .toggle-wrap {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 13px; color: var(--text-2);
+      cursor: pointer; user-select: none; white-space: nowrap;
+    }
+    .toggle {
+      width: 32px; height: 18px; border-radius: 99px;
+      background: var(--border-md);
+      position: relative; transition: background 0.2s; flex-shrink: 0;
+      cursor: pointer; border: none; padding: 0;
+    }
+    .toggle::after {
+      content: ''; position: absolute;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #fff; top: 3px; left: 3px;
+      transition: transform 0.2s;
+    }
+    .toggle.on { background: var(--blue); }
+    .toggle.on::after { transform: translateX(14px); }
+
+    /* ── needs-reply badge ── */
+    .reply-badge {
+      font-size: 10px; font-weight: 600; padding: 1px 6px;
+      border-radius: 99px; background: var(--amber-light);
+      color: var(--amber); white-space: nowrap; flex-shrink: 0;
+    }
+
+    @media (max-width: 700px) {
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .cat-grid { grid-template-columns: 1fr; }
+      main { padding: 1rem; }
+      .toggle-wrap span { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── header ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 16 16"><path d="M2 4l6-2 6 2v2l-6 3-6-3V4z"/><path d="M2 9l6 3 6-3v3l-6 2-6-2V9z" opacity=".5"/></svg>
+      </div>
+      HeroX Gmail Monitor
+    </div>
+    <div class="header-right">
+      <span id="user-pill" class="user-pill" style="display:none;">
+        <span class="avatar" id="user-avatar">JS</span>
+        <span id="user-name">John Sapp</span>
+      </span>
+      <button class="btn-outline" onclick="openConfig()" title="Settings">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>
+        Settings
+      </button>
+      <button class="btn-outline" id="refresh-btn" onclick="loadAll()" style="display:none;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.5 8A5.5 5.5 0 112.5 5"/><path d="M2.5 2v3h3"/></svg>
+        Refresh
+      </button>
+      <button class="btn-outline" id="signout-btn" onclick="signOut()" style="display:none;">Sign out</button>
+    </div>
+  </header>
+
+  <!-- ── auth screen ── -->
+  <div id="auth-screen">
+    <div class="auth-card">
+      <h1>HeroX Gmail Monitor</h1>
+      <p>Connect your Gmail account to monitor project communications across suppliers, domes, and partners.</p>
+      <button class="btn-google" onclick="signIn()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Sign in with Google
+      </button>
+      <p style="margin-top:1rem; font-size:12px; color:var(--text-3);">
+        Need to set your Client ID first?
+        <a href="#" onclick="openConfig(); return false;" style="color:var(--blue);">Open Settings</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- ── dashboard (hidden until signed in) ── -->
+  <main id="dashboard" style="display:none;">
+
+    <!-- metrics -->
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="metric-label">Unread</div>
+        <div class="metric-value" id="m-unread">—</div>
+        <div class="metric-sub">in inbox</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Suppliers</div>
+        <div class="metric-value" id="m-supplier">—</div>
+        <div class="metric-sub">active threads</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Projects</div>
+        <div class="metric-value" id="m-projects">—</div>
+        <div class="metric-sub">dome threads</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Needs reply</div>
+        <div class="metric-value" id="m-needs-reply">—</div>
+        <div class="metric-sub">awaiting your response</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Last synced</div>
+        <div class="metric-value" id="m-synced" style="font-size:14px; padding-top:6px;">—</div>
+        <div class="metric-sub">&nbsp;</div>
+      </div>
+    </div>
+
+    <!-- search -->
+    <div class="search-bar">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4"/><path d="M9.5 9.5l3.5 3.5"/></svg>
+      <input type="text" id="search-input" placeholder="Search: York dome, Kobond, Monolithic, aluminum extrusion…" />
+      <select id="cat-filter">
+        <option value="">All categories</option>
+        <option value="york dome USTA Luca Benetti drawings">York dome</option>
+        <option value="Kobond OR Jinda OR SIOEN OR Halead OR Hytex membrane supplier">Suppliers</option>
+        <option value="Monolithic Constructors Mike South">Monolithic</option>
+        <option value="Temprite GTDM HVAC Milosh heating">HVAC / Temprite</option>
+        <option value="Ballerz Brent Cross Liam Clark Morgan Carr">Ballerz / Brent Cross</option>
+        <option value="Roxana contract legal NDA">Legal / Contracts</option>
+        <option value="Vimetco Dajcor aluminum extrusion channel">Aluminum extrusion</option>
+      </select>
+      <button class="btn-primary" onclick="runSearch()">Search</button>
+      <label class="toggle-wrap" title="Show unread only">
+        <button class="toggle" id="unread-toggle" onclick="toggleUnread()" aria-pressed="false" aria-label="Unread only"></button>
+        Unread only
+      </label>
+    </div>
+
+    <!-- search results -->
+    <div class="results-card" id="results-section" style="display:none;">
+      <div class="results-head">
+        <span class="results-title" id="results-label">Results</span>
+        <button class="btn-outline" onclick="clearResults()" style="font-size:11px; padding:3px 10px;">Clear</button>
+      </div>
+      <div id="results-body"></div>
+    </div>
+
+    <!-- category grid -->
+    <div class="section-label">project categories</div>
+    <div class="cat-grid">
+      <div class="cat-card">
+        <div class="cat-head">
+          <div class="cat-name">
+            <div class="cat-dot" style="background:#854F0B;"></div>
+            Needs reply
+          </div>
+          <button class="btn-outline" style="font-size:11px; padding:3px 10px;" onclick="loadNeedsReply()">Load</button>
+        </div>
+        <div class="cat-body" id="cat-needs-reply"><div class="state-msg">Threads where someone is waiting on you</div></div>
+      </div>
+
+      <div class="cat-card">
+        <div class="cat-head">
+          <div class="cat-name">
+            <div class="cat-dot" style="background:#185FA5;"></div>
+            York dome
+          </div>
+          <button class="btn-outline" style="font-size:11px; padding:3px 10px;" onclick="loadCat('york dome USTA Luca Benetti drawings submittal', 'york')">Load</button>
+        </div>
+        <div class="cat-body" id="cat-york"><div class="state-msg">Click Load to fetch threads</div></div>
+      </div>
+
+      <div class="cat-card">
+        <div class="cat-head">
+          <div class="cat-name">
+            <div class="cat-dot" style="background:#3B6D11;"></div>
+            Suppliers
+          </div>
+          <button class="btn-outline" style="font-size:11px; padding:3px 10px;" onclick="loadCat('Kobond OR Jinda OR SIOEN OR Halead OR Hytex membrane', 'supplier')">Load</button>
+        </div>
+        <div class="cat-body" id="cat-supplier"><div class="state-msg">Click Load to fetch threads</div></div>
+      </div>
+
+      <div class="cat-card">
+        <div class="cat-head">
+          <div class="cat-name">
+            <div class="cat-dot" style="background:#854F0B;"></div>
+            Monolithic Constructors
+          </div>
+          <button class="btn-outline" style="font-size:11px; padding:3px 10px;" onclick="loadCat('Monolithic Constructors Mike South QC membrane', 'monolithic')">Load</button>
+        </div>
+        <div class="cat-body" id="cat-monolithic"><div class="state-msg">Click Load to fetch threads</div></div>
+      </div>
+
+      <div class="cat-card">
+        <div class="cat-head">
+          <div class="cat-name">
+            <div class="cat-dot" style="background:#0F6E56;"></div>
+            HVAC / Temprite
+          </div>
+          <button class="btn-outline" style="font-size:11px; padding:3px 10px;" onclick="loadCat('Temprite GTDM HVAC Milosh heating dome', 'hvac')">Load</button>
+        </div>
+        <div class="cat-body" id="cat-hvac"><div class="state-msg">Click Load to fetch threads</div></div>
+      </div>
+
+      <div class="cat-card">
+        <div class="cat-head">
+          <div class="cat-name">
+            <div class="cat-dot" style="background:#993C1D;"></div>
+            Ballerz / Brent Cross
+          </div>
+          <button class="btn-outline" style="font-size:11px; padding:3px 10px;" onclick="loadCat('Ballerz Brent Cross Liam Clark RFI', 'ballerz')">Load</button>
+        </div>
+        <div class="cat-body" id="cat-ballerz"><div class="state-msg">Click Load to fetch threads</div></div>
+      </div>
+
+      <div class="cat-card">
+        <div class="cat-head">
+          <div class="cat-name">
+            <div class="cat-dot" style="background:#534AB7;"></div>
+            Legal / Contracts
+          </div>
+          <button class="btn-outline" style="font-size:11px; padding:3px 10px;" onclick="loadCat('Roxana contract legal NDA agreement', 'legal')">Load</button>
+        </div>
+        <div class="cat-body" id="cat-legal"><div class="state-msg">Click Load to fetch threads</div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── config modal ── -->
+<div class="modal-bg" id="config-modal">
+  <div class="modal">
+    <h2>Settings</h2>
+    <p>Paste your Google OAuth Client ID here. Get it from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--blue);">Google Cloud Console</a>.</p>
+    <div class="form-group">
+      <label>Google OAuth Client ID</label>
+      <input type="text" id="client-id-input" placeholder="123456789-abc123.apps.googleusercontent.com" />
+      <div class="hint">Found under APIs & Services → Credentials in your Google Cloud project.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeConfig()">Cancel</button>
+      <button class="btn-primary" onclick="saveConfig()">Save &amp; reload</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── toast ── -->
+<div id="toast"></div>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+
+<script>
+/* ── config ── */
+const SCOPES = "https://www.googleapis.com/auth/gmail.readonly";
+let CLIENT_ID = localStorage.getItem("gd_client_id") || "";
+let accessToken = null;
+let unreadOnly = false;
+
+function toggleUnread() {
+  unreadOnly = !unreadOnly;
+  const btn = document.getElementById("unread-toggle");
+  btn.classList.toggle("on", unreadOnly);
+  btn.setAttribute("aria-pressed", unreadOnly);
+  toast(unreadOnly ? "Showing unread only" : "Showing all threads");
+}
+
+function openConfig() {
+  document.getElementById("client-id-input").value = CLIENT_ID;
+  document.getElementById("config-modal").classList.add("open");
+}
+function closeConfig() {
+  document.getElementById("config-modal").classList.remove("open");
+}
+function saveConfig() {
+  const val = document.getElementById("client-id-input").value.trim();
+  if (!val) { toast("Please enter a Client ID"); return; }
+  localStorage.setItem("gd_client_id", val);
+  CLIENT_ID = val;
+  closeConfig();
+  toast("Client ID saved — you can now sign in");
+}
+
+/* ── auth ── */
+function signIn() {
+  if (!CLIENT_ID) { openConfig(); return; }
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) { toast("Sign-in failed: " + resp.error); return; }
+      accessToken = resp.access_token;
+      onSignedIn();
+    }
+  });
+  tokenClient.requestAccessToken();
+}
+
+function signOut() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
+  accessToken = null;
+  document.getElementById("auth-screen").style.display = "flex";
+  document.getElementById("dashboard").style.display = "none";
+  document.getElementById("user-pill").style.display = "none";
+  document.getElementById("refresh-btn").style.display = "none";
+  document.getElementById("signout-btn").style.display = "none";
+  toast("Signed out");
+}
+
+function onSignedIn() {
+  document.getElementById("auth-screen").style.display = "none";
+  document.getElementById("dashboard").style.display = "block";
+  document.getElementById("user-pill").style.display = "flex";
+  document.getElementById("refresh-btn").style.display = "inline-flex";
+  document.getElementById("signout-btn").style.display = "inline-flex";
+  fetchProfile();
+  loadMetrics();
+}
+
+async function fetchProfile() {
+  try {
+    const r = await gapi("https://www.googleapis.com/gmail/v1/users/me/profile");
+    const email = r.emailAddress || "";
+    const name  = email.split("@")[0].replace(".", " ");
+    document.getElementById("user-name").textContent = email;
+    document.getElementById("user-avatar").textContent = name.split(" ").map(w => w[0].toUpperCase()).slice(0,2).join("");
+  } catch(e) {}
+}
+
+/* ── Gmail API ── */
+async function gapi(url) {
+  const r = await fetch(url, { headers: { Authorization: "Bearer " + accessToken } });
+  if (!r.ok) throw new Error("API error " + r.status);
+  return r.json();
+}
+
+async function searchThreads(query, maxResults = 6) {
+  const url = `https://www.googleapis.com/gmail/v1/users/me/threads?q=${encodeURIComponent(query)}&maxResults=${maxResults}`;
+  const data = await gapi(url);
+  const threads = data.threads || [];
+  const details = await Promise.all(threads.map(t =>
+    gapi(`https://www.googleapis.com/gmail/v1/users/me/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`)
+  ));
+  return details.map(t => {
+    const msgs = t.messages || [];
+    const firstMsg = msgs[0];
+    const lastMsg  = msgs[msgs.length - 1];
+    const getHdr = (msg, name) => ((msg?.payload?.headers || []).find(h => h.name === name) || {}).value || "";
+    const unread  = (firstMsg?.labelIds || []).includes("UNREAD") ||
+                    msgs.some(m => (m.labelIds || []).includes("UNREAD"));
+    const from    = getHdr(firstMsg, "From").replace(/<.*?>/, "").trim();
+    const subject = getHdr(firstMsg, "Subject");
+    const date    = getHdr(lastMsg,  "Date");
+    const d       = date ? new Date(date) : null;
+    const dateStr = d ? d.toLocaleDateString("en-US", { month:"short", day:"numeric" }) : "";
+    const lastFrom = getHdr(lastMsg, "From");
+    const myEmail  = document.getElementById("user-name").textContent || "";
+    const needsReply = myEmail && lastFrom.includes(myEmail.split("@")[0]);
+    return { from, subject, date: dateStr, unread, id: t.id, needsReply };
+  });
+}
+
+/* ── metrics ── */
+async function loadMetrics() {
+  document.getElementById("m-synced").textContent = new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
+  try {
+    const unreadData = await gapi("https://www.googleapis.com/gmail/v1/users/me/threads?q=is:unread in:inbox&maxResults=1");
+    document.getElementById("m-unread").textContent = unreadData.resultSizeEstimate ?? "—";
+  } catch(e) {}
+  try {
+    const supData = await gapi("https://www.googleapis.com/gmail/v1/users/me/threads?q=Kobond OR Jinda OR SIOEN OR Halead OR Hytex&maxResults=1");
+    document.getElementById("m-supplier").textContent = supData.resultSizeEstimate ?? "—";
+  } catch(e) {}
+  try {
+    const projData = await gapi("https://www.googleapis.com/gmail/v1/users/me/threads?q=york dome OR Ballerz OR Monolithic OR Sartell&maxResults=1");
+    document.getElementById("m-projects").textContent = projData.resultSizeEstimate ?? "—";
+  } catch(e) {}
+  try {
+    const myEmail = document.getElementById("user-name").textContent || "";
+    if (myEmail) {
+      const replyData = await gapi(`https://www.googleapis.com/gmail/v1/users/me/threads?q=from:me is:unread&maxResults=1`);
+      document.getElementById("m-needs-reply").textContent = replyData.resultSizeEstimate ?? "—";
+    }
+  } catch(e) {}
+}
+
+/* ── category load ── */
+async function loadCat(query, key) {
+  const el = document.getElementById("cat-" + key);
+  el.innerHTML = '<div class="state-msg"><span class="spinner"></span></div>';
+  try {
+    const q = unreadOnly ? query + " is:unread" : query;
+    const threads = await searchThreads(q, 5);
+    renderThreads(threads, "cat-" + key);
+  } catch(e) {
+    el.innerHTML = '<div class="state-msg">Could not load — check sign-in</div>';
+  }
+}
+
+async function loadNeedsReply() {
+  const el = document.getElementById("cat-needs-reply");
+  el.innerHTML = '<div class="state-msg"><span class="spinner"></span></div>';
+  try {
+    const myEmail = document.getElementById("user-name").textContent || "";
+    const query = myEmail
+      ? `from:me newer_than:30d`
+      : `is:sent newer_than:30d`;
+    const threads = await searchThreads(query, 8);
+    const filtered = threads.filter(t => t.needsReply);
+    document.getElementById("m-needs-reply").textContent = filtered.length;
+    renderThreads(filtered, "cat-needs-reply");
+  } catch(e) {
+    el.innerHTML = '<div class="state-msg">Could not load — check sign-in</div>';
+  }
+}
+
+function loadAll() {
+  loadNeedsReply();
+  loadCat("york dome USTA Luca Benetti drawings submittal", "york");
+  loadCat("Kobond OR Jinda OR SIOEN OR Halead OR Hytex membrane", "supplier");
+  loadCat("Monolithic Constructors Mike South QC membrane", "monolithic");
+  loadCat("Temprite GTDM HVAC Milosh heating dome", "hvac");
+  loadCat("Ballerz Brent Cross Liam Clark RFI", "ballerz");
+  loadCat("Roxana contract legal NDA agreement", "legal");
+  loadMetrics();
+}
+
+/* ── search ── */
+async function runSearch() {
+  const q    = document.getElementById("search-input").value.trim();
+  const cat  = document.getElementById("cat-filter").value;
+  const query = q || cat;
+  if (!query) { toast("Enter a search term or pick a category"); return; }
+  if (!accessToken) { toast("Sign in first"); return; }
+
+  const section = document.getElementById("results-section");
+  const body    = document.getElementById("results-body");
+  const label   = document.getElementById("results-label");
+  section.style.display = "block";
+  body.innerHTML = '<div class="state-msg"><span class="spinner"></span></div>';
+  label.textContent = `Searching for "${query}"…`;
+
+  try {
+    const q = unreadOnly ? query + " is:unread" : query;
+    const threads = await searchThreads(q, 10);
+    label.textContent = `${threads.length} thread${threads.length !== 1 ? "s" : ""} for "${query}"${unreadOnly ? " (unread)" : ""}`;
+    renderThreads(threads, "results-body");
+  } catch(e) {
+    label.textContent = "Search failed";
+    body.innerHTML = '<div class="state-msg">Try again or check sign-in</div>';
+  }
+}
+
+function clearResults() {
+  document.getElementById("results-section").style.display = "none";
+  document.getElementById("results-body").innerHTML = "";
+  document.getElementById("search-input").value = "";
+  document.getElementById("cat-filter").value = "";
+}
+
+document.getElementById("search-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") runSearch();
+});
+
+/* ── render ── */
+function renderThreads(threads, containerId) {
+  const el = document.getElementById(containerId);
+  if (!threads.length) {
+    el.innerHTML = '<div class="state-msg">No threads found</div>';
+    return;
+  }
+  el.innerHTML = threads.map(t => `
+    <div class="thread" onclick="openGmail('${t.id}')">
+      <div class="${t.unread ? 'unread-dot' : 'read-dot'}"></div>
+      <div class="thread-info">
+        <div class="thread-from">${escape(t.from)}</div>
+        <div class="thread-subject">${escape(t.subject || "(no subject)")}</div>
+      </div>
+      ${t.needsReply ? '<span class="reply-badge">awaiting reply</span>' : ''}
+      <div class="thread-date">${t.date}</div>
+    </div>
+  `).join("");
+}
+
+function escape(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function openGmail(threadId) {
+  window.open(`https://mail.google.com/mail/u/0/#inbox/${threadId}`, "_blank");
+}
+
+/* ── toast ── */
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 3000);
+}
+
+/* ── auto-open config if no client ID ── */
+if (!CLIENT_ID) {
+  setTimeout(openConfig, 600);
+}
+</script>
+</body>
+</html>
