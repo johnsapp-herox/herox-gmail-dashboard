@@ -162,7 +162,7 @@
     .btn-outline:hover { background: var(--surface2); }
 
     /* ── metrics row ── */
-    .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
 
     .metric-card {
       background: var(--surface);
@@ -444,9 +444,14 @@
         <div class="metric-sub">dome threads</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Needs reply</div>
+        <div class="metric-label">Reply needed</div>
         <div class="metric-value" id="m-needs-reply">—</div>
-        <div class="metric-sub">awaiting your response</div>
+        <div class="metric-sub">you need to reply</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Awaiting reply</div>
+        <div class="metric-value" id="m-awaiting-reply">—</div>
+        <div class="metric-sub">waiting on others</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Last synced</div>
@@ -492,11 +497,22 @@
         <div class="cat-head">
           <div class="cat-name">
             <div class="cat-dot" style="background:#854F0B;"></div>
-            Needs reply
+            Reply needed — from you
           </div>
           <button class="btn-outline" style="font-size:11px; padding:3px 10px;" onclick="loadNeedsReply()">Load</button>
         </div>
-        <div class="cat-body" id="cat-needs-reply"><div class="state-msg">Threads where someone is waiting on you</div></div>
+        <div class="cat-body" id="cat-needs-reply"><div class="state-msg">Unread threads waiting on your reply</div></div>
+      </div>
+
+      <div class="cat-card">
+        <div class="cat-head">
+          <div class="cat-name">
+            <div class="cat-dot" style="background:#534AB7;"></div>
+            Awaiting reply — from others
+          </div>
+          <button class="btn-outline" style="font-size:11px; padding:3px 10px;" onclick="loadAwaitingReply()">Load</button>
+        </div>
+        <div class="cat-body" id="cat-awaiting-reply"><div class="state-msg">Threads where you sent the last message</div></div>
       </div>
 
       <div class="cat-card">
@@ -718,11 +734,12 @@ async function loadMetrics() {
     document.getElementById("m-projects").textContent = projData.resultSizeEstimate ?? "—";
   } catch(e) {}
   try {
-    const myEmail = document.getElementById("user-name").textContent || "";
-    if (myEmail) {
-      const replyData = await gapi(`https://www.googleapis.com/gmail/v1/users/me/threads?q=from:me is:unread&maxResults=1`);
-      document.getElementById("m-needs-reply").textContent = replyData.resultSizeEstimate ?? "—";
-    }
+    const needsReplyData = await gapi(`https://www.googleapis.com/gmail/v1/users/me/threads?q=to:me is:unread -from:me -from:noreply newer_than:60d&maxResults=1`);
+    document.getElementById("m-needs-reply").textContent = needsReplyData.resultSizeEstimate ?? "—";
+  } catch(e) {}
+  try {
+    const awaitingData = await gapi(`https://www.googleapis.com/gmail/v1/users/me/threads?q=from:me -to:me newer_than:60d&maxResults=1`);
+    document.getElementById("m-awaiting-reply").textContent = awaitingData.resultSizeEstimate ?? "—";
   } catch(e) {}
 }
 
@@ -752,8 +769,23 @@ async function loadNeedsReply() {
   }
 }
 
+async function loadAwaitingReply() {
+  const el = document.getElementById("cat-awaiting-reply");
+  el.innerHTML = '<div class="state-msg"><span class="spinner"></span></div>';
+  try {
+    const query = `from:me -to:me newer_than:60d -from:noreply`;
+    const threads = await searchThreads(query, 8);
+    const waiting = threads.filter(t => !t.unread);
+    document.getElementById("m-awaiting-reply").textContent = waiting.length;
+    renderThreads(waiting, "cat-awaiting-reply");
+  } catch(e) {
+    el.innerHTML = '<div class="state-msg">Could not load — check sign-in</div>';
+  }
+}
+
 function loadAll() {
   loadNeedsReply();
+  loadAwaitingReply();
   loadCat("york dome USTA Luca Benetti drawings submittal", "york");
   loadCat("Kobond OR Jinda OR SIOEN OR Halead OR Hytex membrane", "supplier");
   loadCat("Monolithic Constructors Mike South QC membrane", "monolithic");
